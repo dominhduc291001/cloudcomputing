@@ -1,0 +1,75 @@
+stages:
+  - build
+  - deploy
+
+cache:
+  paths:
+    - .m2/repository
+
+backend-build:
+  stage: build
+  before_script:
+    - cd StudentManagementAPI
+  script:
+    - mvn package -DskipTests
+    # - cd backend
+    # - mvn package
+    # - echo "start build "
+    # - mvn clean install
+    # - cd ..
+    # - echo "Done!"
+    # - docker-compose build
+    - echo "Start build docker image"
+    - docker build -t AWS2022/backend:latest .
+    - echo Push image to Registry...
+    - cd ..
+    - echo Done
+  tags:
+    - be_2
+  only:
+    refs:
+      - main
+webui-build:
+  stage: build
+  before_script:
+    - cd StudentManagementUI
+  script:
+    - echo "Start build docker image"
+    - docker build -t AWS2022/webui:latest .
+    - cd ..
+    - echo Done
+  tags:
+    - webui
+  only:
+    refs:
+      - main
+
+deployproject:
+  stage: deploy
+  script:
+    - docker stop backend || true
+    # - docker stop db || true
+    # - docker stop webui || true
+    # - docker volume prune -f
+    - docker container prune -f
+    - docker image prune -f
+    # - docker-compose up -d
+    - docker run --restart=always -d -p 8080:8080 --name backend AWS2022/backend:latest
+  tags:
+    - be_2
+  only:
+    refs:
+      - main
+deploywebui:
+  stage: deploy
+  script:
+    - docker stop webui || true
+    - docker container prune -f
+    - docker image prune -f
+    # - docker-compose up -d
+    - docker run --restart=always -d -p 5000:80 --name webui AWS2022/webui:latest
+  tags:
+    - webui
+  only:
+    refs:
+      - main
